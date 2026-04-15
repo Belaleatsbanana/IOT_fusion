@@ -1,0 +1,9 @@
+Run examples
+- Images only:
+python code/main.py --model_to_run deit_tiny --input_mode images_only --experiment_name deit_img_only
+- Metadata only:
+python code/main.py --model_to_run deit_tiny --input_mode metadata_only --experiment_name deit_meta_only
+- Intermediate fusion:
+python code/main.py --model_to_run deit_tiny --input_mode intermediate_fusion --experiment_name deit_inter_fusion
+- Late fusion:
+python code/main.py --model_to_run deit_tiny --input_mode late_fusion --experiment_name deit_late_fusion
