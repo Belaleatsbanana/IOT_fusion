@@ -1,18 +1,12 @@
-def get_config(): # resnext50_32x4d
+def get_config():
     return {
         'MODEL': {
-            'NAME': 'resnext50_local',
+            'NAME': 'cnn',
             'TAG': 'CNN',
             'NUM_CLASSES': 5,
             'DROP_PATH_RATE': 0.15,
             'LABEL_SMOOTHING': 0.1,
-            'NUM_BLOCKS': [3, 4, 6, 3],
-            'CARDINALITY': 32,
-            'BOTTLENECK_WIDTH': 4,
-            'EXPANSION': 2,
-            'KERNEL_SIZE': 7,
-            'STRIDE': 2,
-            'PADDING': 3
+            'BASE_CHANNELS': 32,
         },
         'DATA': {
             'DATA_PATH': None,
@@ -26,7 +20,7 @@ def get_config(): # resnext50_32x4d
             'RETURN_METADATA': None,
             'BATCH_SIZE': None,
             'NUM_WORKERS': None,
-            'PIN_MEMORY': None
+            'PIN_MEMORY': None,
         },
         'TRAIN': {
             'START_EPOCH': None,
@@ -38,7 +32,7 @@ def get_config(): # resnext50_32x4d
             'WARMUP_LR': 1e-6,
             'MIN_LR': 1e-6,
             'OPT': 'adamw',
-            'SCHED': 'cosine'
+            'SCHED': 'cosine',
         },
-        'OUTPUT': None
+        'OUTPUT': None,
     }
