@@ -1,9 +1,18 @@
 Run examples
-- Images only:
-python code/main.py --model_to_run deit_tiny --input_mode images_only --experiment_name deit_img_only
-- Metadata only:
-python code/main.py --model_to_run deit_tiny --input_mode metadata_only --experiment_name deit_meta_only
-- Intermediate fusion:
-python code/main.py --model_to_run deit_tiny --input_mode intermediate_fusion --experiment_name deit_inter_fusion
-- Late fusion:
-python code/main.py --model_to_run deit_tiny --input_mode late_fusion --experiment_name deit_late_fusion
+- CNN - Images only:
+python code/main.py --model_to_run cnn --input_mode images_only --experiment_name cnn_img_only
+- CNN - Metadata only:
+python code/main.py --model_to_run cnn --input_mode metadata_only --experiment_name cnn_meta_only
+- CNN - Intermediate fusion:
+python code/main.py --model_to_run cnn --input_mode intermediate_fusion --experiment_name cnn_inter_fusion
+- CNN - Late fusion:
+python code/main.py --model_to_run cnn --input_mode late_fusion --experiment_name cnn_late_fusion
+
+- Transformer - Images only:
+python code/main.py --model_to_run transformer --input_mode images_only --experiment_name transformer_img_only
+- Transformer - Metadata only:
+python code/main.py --model_to_run transformer --input_mode metadata_only --experiment_name transformer_meta_only
+- Transformer - Intermediate fusion:
+python code/main.py --model_to_run transformer --input_mode intermediate_fusion --experiment_name transformer_inter_fusion
+- Transformer - Late fusion:
+python code/main.py --model_to_run transformer --input_mode late_fusion --experiment_name transformer_late_fusion
