@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    container_name: iot-fusion-preprocess-web
+    ports:
+      - "8501:8501"
+    environment:
+      - PREPROCESS_ARTIFACTS_DIR=/app/artifacts/preprocessing
+    volumes:
+      - ./artifacts:/app/artifacts
