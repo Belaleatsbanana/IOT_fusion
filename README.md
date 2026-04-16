@@ -89,6 +89,11 @@ The compose file mounts `./artifacts` into the container. Make sure
 Workflow: `.github/workflows/docker-image.yml`
 
 - builds Docker image on push/PR
-- validates container build (no push)
+- automatically publishes to GitHub Container Registry (GHCR) on push events
+- uses branch/sha tags and `latest` for the default branch
 
-If you want automatic image publishing to GitHub Container Registry, add a second step using `docker/login-action` + `docker/build-push-action` with `push: true`.
+Published image format:
+
+- `ghcr.io/<owner>/<repo>:<branch>`
+- `ghcr.io/<owner>/<repo>:sha-<commit>`
+- `ghcr.io/<owner>/<repo>:latest` (default branch only)
