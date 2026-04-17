@@ -6,11 +6,12 @@ import os
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from dotenv import load_dotenv
 import sklearn
 
-from app.inference import load_onnx_classifier
-from app.preprocessing import load_artifacts
+from app.inference import classify, load_onnx_classifier
+from app.preprocessing import load_artifacts, outlier_flag_for_metadata, preprocess_metadata_row
 
 
 DEFAULT_ARTIFACTS_DIR = Path("artifacts") / "preprocessing"
@@ -27,11 +28,24 @@ def run_healthcheck() -> dict[str, Any]:
     artifacts = load_artifacts(artifacts_dir)
     classifier = load_onnx_classifier(classes_from_artifacts=artifacts.classes)
 
+    sample_metadata = {field: "" for field in artifacts.feature_cols}
+    metadata_vector = preprocess_metadata_row(sample_metadata, artifacts)
+    outlier_flag = outlier_flag_for_metadata(sample_metadata, artifacts)
+    sample_image = np.zeros((3, 224, 224), dtype=np.float32)
+    _ = classify(
+        classifier,
+        image_tensor=sample_image,
+        metadata_vector=metadata_vector,
+        outlier_flag=outlier_flag,
+    )
+
     return {
         "ok": True,
         "sklearn_version": sklearn.__version__,
         "artifacts_dir": artifacts_dir,
         "feature_count": len(artifacts.feature_cols),
+        "metadata_vector_shape": list(metadata_vector.shape),
+        "outlier_flag": outlier_flag,
         "classes": artifacts.classes,
         "onnx_model_path": str(classifier.model_path),
         "onnx_inputs": [input_info.name for input_info in classifier.session.get_inputs()],

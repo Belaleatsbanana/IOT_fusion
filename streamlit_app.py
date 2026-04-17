@@ -133,6 +133,7 @@ def main() -> None:
                 classifier,
                 image_tensor=image_tensor,
                 metadata_vector=metadata_vec,
+                outlier_flag=outlier_flag,
             )
         except Exception as exc:  # noqa: BLE001
             st.error(f"Model inference failed: {exc}")

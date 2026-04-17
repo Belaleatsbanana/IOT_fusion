@@ -159,10 +159,52 @@ def _coerce_to_input_shape(array: np.ndarray, expected_shape: list[int | str | N
     return coerced.astype(np.float32)
 
 
+def _shape_dim_as_int(dim: int | str | None) -> int | None:
+    if isinstance(dim, int) and dim > 0:
+        return dim
+    if isinstance(dim, str) and dim.isdigit():
+        parsed = int(dim)
+        return parsed if parsed > 0 else None
+    return None
+
+
+def _expected_feature_dim(shape: list[int | str | None]) -> int | None:
+    if len(shape) < 2:
+        return None
+    return _shape_dim_as_int(shape[-1])
+
+
+def _prepare_metadata_for_input(
+    metadata_batch: np.ndarray,
+    input_shape: list[int | str | None],
+    outlier_flag: int | None,
+) -> np.ndarray:
+    prepared = np.asarray(metadata_batch, dtype=np.float32)
+    if prepared.ndim == 1:
+        prepared = prepared.reshape(1, -1)
+
+    expected_dim = _expected_feature_dim(input_shape)
+    if expected_dim is not None and prepared.ndim == 2:
+        current_dim = prepared.shape[1]
+
+        if current_dim != expected_dim:
+            if outlier_flag is not None and current_dim + 1 == expected_dim:
+                outlier_col = np.full((prepared.shape[0], 1), float(outlier_flag), dtype=np.float32)
+                prepared = np.concatenate([prepared, outlier_col], axis=1)
+            elif current_dim < expected_dim:
+                pad = np.zeros((prepared.shape[0], expected_dim - current_dim), dtype=np.float32)
+                prepared = np.concatenate([prepared, pad], axis=1)
+            else:
+                prepared = prepared[:, :expected_dim]
+
+    return _coerce_to_input_shape(prepared, input_shape)
+
+
 def _build_feed_dict(
     session: ort.InferenceSession,
     image_tensor: np.ndarray,
     metadata_vector: np.ndarray,
+    outlier_flag: int | None = None,
 ) -> dict[str, np.ndarray]:
     image_batch = np.asarray(image_tensor, dtype=np.float32)
     if image_batch.ndim == 3:
@@ -179,8 +221,11 @@ def _build_feed_dict(
     if len(session_inputs) == 1:
         single_input = session_inputs[0]
         rank = _shape_rank(single_input.shape)
-        source = image_batch if (rank is not None and rank >= 3) else metadata_batch
-        return {single_input.name: _coerce_to_input_shape(source, single_input.shape)}
+        if rank is not None and rank >= 3:
+            source = _coerce_to_input_shape(image_batch, single_input.shape)
+        else:
+            source = _prepare_metadata_for_input(metadata_batch, single_input.shape, outlier_flag)
+        return {single_input.name: source}
 
     feed_dict: dict[str, np.ndarray] = {}
     for input_info in session_inputs:
@@ -188,7 +233,7 @@ def _build_feed_dict(
         rank = _shape_rank(input_info.shape)
 
         if any(token in normalized_name for token in ("meta", "tab", "clinical", "feature")):
-            feed_dict[input_info.name] = _coerce_to_input_shape(metadata_batch, input_info.shape)
+            feed_dict[input_info.name] = _prepare_metadata_for_input(metadata_batch, input_info.shape, outlier_flag)
             continue
 
         if any(token in normalized_name for token in ("img", "image", "pixel", "vision")):
@@ -198,7 +243,7 @@ def _build_feed_dict(
         if rank is not None and rank >= 3:
             feed_dict[input_info.name] = _coerce_to_input_shape(image_batch, input_info.shape)
         else:
-            feed_dict[input_info.name] = _coerce_to_input_shape(metadata_batch, input_info.shape)
+            feed_dict[input_info.name] = _prepare_metadata_for_input(metadata_batch, input_info.shape, outlier_flag)
 
     return feed_dict
 
@@ -261,8 +306,14 @@ def classify(
     classifier: OnnxClassifier,
     image_tensor: np.ndarray,
     metadata_vector: np.ndarray,
+    outlier_flag: int | None = None,
 ) -> ClassificationResult:
-    feed_dict = _build_feed_dict(classifier.session, image_tensor=image_tensor, metadata_vector=metadata_vector)
+    feed_dict = _build_feed_dict(
+        classifier.session,
+        image_tensor=image_tensor,
+        metadata_vector=metadata_vector,
+        outlier_flag=outlier_flag,
+    )
     outputs = classifier.session.run(None, feed_dict)
     if not outputs:
         raise RuntimeError("ONNX inference returned no outputs.")
