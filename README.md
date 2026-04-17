@@ -4,7 +4,8 @@ This app extracts preprocessing logic from `exploration.ipynb`, saves it as a Jo
 
 - accepts an image and metadata,
 - applies the same preprocessing,
-- returns transformed tensors/vectors (model call currently stubbed).
+- runs ONNX inference,
+- returns the predicted class and probabilities.
 
 ## What is persisted
 
@@ -33,6 +34,23 @@ Image inference preprocessing follows notebook eval transform:
 - normalize using ImageNet mean/std
 - CHW float32 output
 
+## ONNX model download
+
+The application can auto-download the ONNX model from Google Drive at startup.
+
+Default link used:
+
+- `https://drive.google.com/file/d/1l594HdeuFiWKug3Dqew-GBUzq6FH9inH/view?usp=sharing`
+
+Configurable environment variables:
+
+- `ONNX_MODEL_AUTO_DOWNLOAD=true|false` (default: `true`)
+- `ONNX_MODEL_DRIVE_URL=<google drive or direct URL>`
+- `ONNX_MODEL_DIR=<target folder>` (default: `artifacts/models`)
+- `ONNX_MODEL_FILENAME=<file name>` (default: `model.onnx`)
+- `ONNX_MODEL_PATH=<full path>` (overrides dir+filename)
+- `ONNX_CLASS_NAMES=class_a,class_b,...` (optional explicit class names)
+
 ## Local run
 
 Install deps:
@@ -50,12 +68,17 @@ Then set `.env` (or shell env):
 
 ```bash
 PREPROCESS_ARTIFACTS_DIR=/absolute/path/to/joblibs/folder
+ONNX_MODEL_AUTO_DOWNLOAD=true
+ONNX_MODEL_DRIVE_URL=https://drive.google.com/file/d/1l594HdeuFiWKug3Dqew-GBUzq6FH9inH/view?usp=sharing
+ONNX_MODEL_DIR=/absolute/path/to/model/dir
+ONNX_MODEL_FILENAME=model.onnx
 ```
 
 Notes:
 
 - `PREPROCESS_ARTIFACTS_DIR` must be a local/mounted filesystem path that contains
   `preprocessing_bundle.joblib`.
+- ONNX model is downloaded automatically if not present in the configured location.
 
 Run Streamlit UI:
 
@@ -71,7 +94,8 @@ Open `http://localhost:8501`.
 - Builds metadata form from artifact feature columns
 - Preprocesses image with notebook-compatible eval transform
 - Preprocesses metadata via loaded `ColumnTransformer.transform(...)`
-- Returns image tensor and metadata vector previews in UI
+- Runs ONNX inference and returns predicted class with confidence/probabilities
+- Also shows image tensor and metadata vector previews in UI
 
 ## Docker
 
@@ -83,6 +107,29 @@ docker compose up --build
 
 The compose file mounts `./artifacts` into the container. Make sure
 `preprocessing_bundle.joblib` exists inside the mounted path.
+
+At container startup, the app also downloads `model.onnx` into
+`/app/artifacts/models` unless already present.
+
+## Healthcheck
+
+The container includes a readiness healthcheck that verifies:
+
+- preprocessing artifact can be loaded,
+- ONNX model is present/loadable,
+- ONNX runtime session exposes valid inputs/outputs.
+
+Run manually:
+
+```bash
+python -m app.healthcheck
+```
+
+Quiet mode (exit code only):
+
+```bash
+python -m app.healthcheck --quiet
+```
 
 ## GitHub CI
 

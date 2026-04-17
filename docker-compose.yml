@@ -6,5 +6,9 @@ services:
       - "8501:8501"
     environment:
       - PREPROCESS_ARTIFACTS_DIR=/app/artifacts/preprocessing
+      - ONNX_MODEL_AUTO_DOWNLOAD=true
+      - ONNX_MODEL_DRIVE_URL=https://drive.google.com/file/d/1l594HdeuFiWKug3Dqew-GBUzq6FH9inH/view?usp=sharing
+      - ONNX_MODEL_DIR=/app/artifacts/models
+      - ONNX_MODEL_FILENAME=model.onnx
     volumes:
       - ./artifacts:/app/artifacts

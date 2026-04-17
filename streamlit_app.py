@@ -9,6 +9,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from PIL import Image, UnidentifiedImageError
 
+from app.inference import OnnxClassifier, classify, load_onnx_classifier
 from app.preprocessing import (
     EXPECTED_METADATA_FIELDS,
     PreprocessingArtifacts,
@@ -29,6 +30,12 @@ if ENV_FILE.exists():
 @st.cache_resource
 def _load_artifacts_cached(artifacts_dir: str) -> PreprocessingArtifacts:
     return load_artifacts(artifacts_dir)
+
+
+@st.cache_resource
+def _load_classifier_cached(classes: tuple[str, ...]) -> OnnxClassifier:
+    class_list = list(classes)
+    return load_onnx_classifier(classes_from_artifacts=class_list)
 
 
 def _metadata_fields(artifacts: PreprocessingArtifacts | None) -> list[str]:
@@ -53,15 +60,14 @@ def _render_metadata_inputs(fields: list[str], artifacts: PreprocessingArtifacts
 
 
 def main() -> None:
-    st.set_page_config(page_title="IOT Fusion Preprocess", page_icon="🧪", layout="wide")
+    st.set_page_config(page_title="IOT Fusion Inference", page_icon="🧪", layout="wide")
 
-    st.title("IOT Fusion Preprocessing (Streamlit)")
-    st.caption(
-        "Upload image + metadata, then apply the same preprocessing pipeline saved as joblib from exploration notebook."
-    )
+    st.title("IOT Fusion Classification (Streamlit)")
+    st.caption("Upload image + metadata to run preprocessing and ONNX inference in one step.")
 
     artifacts_dir = os.getenv("PREPROCESS_ARTIFACTS_DIR", str(DEFAULT_ARTIFACTS_DIR))
     artifacts: PreprocessingArtifacts | None = None
+    classifier: OnnxClassifier | None = None
     try:
         artifacts = _load_artifacts_cached(artifacts_dir)
         st.success(f"Loaded preprocessing artifact from `{artifacts_dir}`")
@@ -72,6 +78,13 @@ def main() -> None:
         )
     except Exception as exc:  # noqa: BLE001
         st.error(f"Failed to load preprocessing artifact: {exc}")
+
+    if artifacts is not None:
+        try:
+            classifier = _load_classifier_cached(tuple(artifacts.classes))
+            st.success(f"Loaded ONNX model from `{classifier.model_path}`")
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Failed to load ONNX classifier: {exc}")
 
     left, right = st.columns([1, 1])
 
@@ -87,12 +100,15 @@ def main() -> None:
         fields = _metadata_fields(artifacts)
         metadata = _render_metadata_inputs(fields, artifacts)
 
-    if st.button("Preprocess", type="primary", use_container_width=True):
+    if st.button("Run classification", type="primary", use_container_width=True):
         if uploaded is None:
             st.warning("Please upload an image.")
             return
         if artifacts is None:
             st.warning("Artifacts are required for metadata transform.")
+            return
+        if classifier is None:
+            st.warning("ONNX model is required for inference.")
             return
 
         try:
@@ -112,7 +128,31 @@ def main() -> None:
             st.error(f"Metadata preprocessing failed: {exc}")
             return
 
-        st.subheader("Preprocessing output")
+        try:
+            prediction = classify(
+                classifier,
+                image_tensor=image_tensor,
+                metadata_vector=metadata_vec,
+            )
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Model inference failed: {exc}")
+            return
+
+        st.subheader("Classification result")
+        st.success(
+            f"Predicted class: **{prediction.class_name}** "
+            f"(index={prediction.class_index}, confidence={prediction.confidence:.4f})"
+        )
+        st.json(
+            {
+                "predicted_class": prediction.class_name,
+                "class_index": prediction.class_index,
+                "confidence": round(prediction.confidence, 6),
+                "probabilities": {k: round(v, 6) for k, v in prediction.probabilities.items()},
+            }
+        )
+
+        st.subheader("Preprocessing details")
         c1, c2 = st.columns(2)
 
         with c1:
@@ -135,8 +175,6 @@ def main() -> None:
                     "outlier_flag": outlier_flag,
                 }
             )
-
-        st.info("Model inference is intentionally stubbed; this UI currently returns preprocessing outputs only.")
 
 
 if __name__ == "__main__":
