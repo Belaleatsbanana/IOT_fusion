@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+import sklearn
 
 from app.inference import load_onnx_classifier
 from app.preprocessing import load_artifacts
@@ -28,6 +29,7 @@ def run_healthcheck() -> dict[str, Any]:
 
     return {
         "ok": True,
+        "sklearn_version": sklearn.__version__,
         "artifacts_dir": artifacts_dir,
         "feature_count": len(artifacts.feature_cols),
         "classes": artifacts.classes,

@@ -61,6 +61,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Important:
+
+- `preprocessing_bundle.joblib` in this repository was serialized with `scikit-learn==1.6.1`.
+- The runtime pins `scikit-learn==1.6.1` to avoid deserialization/runtime compatibility issues.
+
 Save/export preprocessing from `exploration.ipynb` so that
 `preprocessing_bundle.joblib` exists.
 
